@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UMEED Health Portal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <style>
+        /* Custom Animations */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        .slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .pulse-slow { animation: pulseSlow 3s infinite; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulseSlow {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Hide scrollbar for clean UI */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        
+        /* Active nav item color */
+        .nav-active { color: #2D6CDF; }
+        .nav-inactive { color: #9CA3AF; }
+    </style>
+</head>
+<body class="bg-[#F5F7FA] font-sans text-gray-800 antialiased selection:bg-blue-200">
+
+    <!-- App Container -->
+    <div id="app" class="max-w-md mx-auto min-h-screen relative shadow-2xl bg-[#F5F7FA] overflow-x-hidden pb-20">
+        <!-- Content will be injected here via JS -->
+    </div>
+
+    <!-- Bottom Navigation (Hidden on landing & abha flow) -->
+    <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-100 px-6 py-3 flex items-center justify-between shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] z-50 transition-transform duration-300">
+        <!-- Rendered dynamically via JS for localization -->
+    </nav>
+
+    <script>
+        // --- Mock Data ---
+        const MOCK_USER = {
+            name: "Rajesh Kumar", id: "FAM-992341", phone: "+91 98765 43210", ashaWorker: "Sunita Devi", ashaPhone: "+91 90000 11111"
+        };
+        const FAMILY_MEMBERS = [
+            { id: 1, name: "Rajesh Kumar", age: 45, gender: "Male", risk: "Low", blood: "O+", bp: "120/80", sugar: "95", weight: "72kg" },
+            { id: 2, name: "Meena Devi", age: 40, gender: "Female", risk: "High", blood: "A+", bp: "145/95", sugar: "180", weight: "65kg" },
+            { id: 3, name: "Amit Kumar", age: 12, gender: "Male", risk: "Normal", blood: "O+", bp: "110/70", sugar: "85", weight: "35kg" },
+        ];
+        const REPORTS = [
+            { id: 101, title: "Blood Test Report", date: "15 Oct 2023", member: "Meena Devi" },
+            { id: 102, title: "Diabetes Screening", date: "10 Oct 2023", member: "Rajesh Kumar" },
+        ];
+        const APPOINTMENTS = [
+            { id: 1, type: "Routine Checkup", date: "25 Oct 2023", time: "10:30 AM", status: "Confirmed", doctor: "Dr. Sharma" },
+            { id: 2, type: "eSanjeevni Call", date: "27 Oct 2023", time: "02:00 PM", status: "Pending", doctor: "Dr. Aditi Verma", special: "General Physician" },
+        ];
+
+        // --- Translations ---
+        const i18n = {
+            en: {
+                navHome: "Home", navFamily: "Family", navDocs: "Docs", navVisits: "Visits", navMe: "Me",
+                portal: "Health Portal", greet: "Namaste!", desc: "Enter your details to see your health",
+                mobile: "Mobile Number", otp: "Verification Code", resend: "Resend SMS?", btnSend: "Send OTP SMS", btnLogin: "Login Now", conn: "Connected to",
+                id: "ID", linkAbha: "Link your ABHA ID", govId: "Government ID", syncRecords: "Sync hospital records automatically",
+                myFamily: "My Family", healthVitals: "Health Vitals", reports: "Reports", schedule: "Schedule", healthAlerts: "Health Alerts",
+                needHelp: "Need help?", call: "Call", assignedAsha: "Your assigned ASHA Worker",
+                familyMembers: "Family Members", yrs: "Yrs", male: "Male", female: "Female", riskLow: "Low Risk", riskNormal: "Normal Risk", riskMedium: "Medium Risk", riskHigh: "High Risk",
+                memberProfile: "Member Profile", healthSummary: "Health Summary", bp: "Blood Pressure", sugar: "Sugar Level", weight: "Body Weight", bmi: "BMI Status", normal: "Normal",
+                download: "Download", share: "Share", recentVisits: "Recent Visits",
+                myReports: "My Reports", syncAbha: "Sync Latest from ABHA", missingReport: "Missing a report?", contactAsha: "Contact your ASHA worker to upload new documents.", reqUpload: "Request Upload",
+                videoCall: "Video Call", date: "Date", time: "Time", status: "Status", joinCall: "Join Video Consultation",
+                settings: "Settings", abhaAcct: "ABHA Account", linkedSuccess: "Linked Successfully", notLinked: "Not Linked", linkNow: "Link Now",
+                lang: "Language", notif: "Notifications", logout: "Logout from Portal", madeWith: "Made with ♥ for rural wellness",
+                linkAbhaTitle: "Link ABHA ID", enter14: "Enter your 14-digit Ayushman Bharat Health Account number to fetch your medical history securely.", abhaNum: "ABHA Number", getOtp: "Get OTP",
+                enterOtp: "Enter OTP", sent6: "We sent a 6-digit code to your mobile number registered with ABHA.", verifyLink: "Verify & Link",
+                abhaLinked: "ABHA Linked!", securelySynced: "Your health records are now securely synced with UMEED.",
+                highBpDetected: "Meena Devi: High BP detected", vaxDue: "Vaccination due: Amit (15 Nov)"
+            },
+            hi: {
+                navHome: "होम", navFamily: "परिवार", navDocs: "कागज़ात", navVisits: "दौरे", navMe: "प्रोफ़ाइल",
+                portal: "स्वास्थ्य पोर्टल", greet: "नमस्ते!", desc: "अपना स्वास्थ्य देखने के लिए विवरण दर्ज करें",
+                mobile: "मोबाइल नंबर", otp: "सत्यापन कोड", resend: "दोबारा भेजें?", btnSend: "ओटीपी भेजें", btnLogin: "लॉगिन करें", conn: "जुड़े हुए हैं",
+                id: "आईडी", linkAbha: "अपना ABHA आईडी लिंक करें", govId: "सरकारी आईडी", syncRecords: "अस्पताल के रिकॉर्ड अपने आप सिंक करें",
+                myFamily: "मेरा परिवार", healthVitals: "स्वास्थ्य विवरण", reports: "रिपोर्ट", schedule: "कार्यक्रम", healthAlerts: "स्वास्थ्य अलर्ट",
+                needHelp: "मदद चाहिए?", call: "कॉल करें", assignedAsha: "आपकी असाइन की गई आशा कार्यकर्ता",
+                familyMembers: "परिवार के सदस्य", yrs: "वर्ष", male: "पुरुष", female: "महिला", riskLow: "कम जोखिम", riskNormal: "सामान्य जोखिम", riskMedium: "मध्यम जोखिम", riskHigh: "उच्च जोखिम",
+                memberProfile: "सदस्य प्रोफ़ाइल", healthSummary: "स्वास्थ्य सारांश", bp: "रक्तचाप", sugar: "शुगर स्तर", weight: "शरीर का वजन", bmi: "बीएमआई स्थिति", normal: "सामान्य",
+                download: "डाउनलोड करें", share: "साझा करें", recentVisits: "हाल के दौरे",
+                myReports: "मेरी रिपोर्ट", syncAbha: "ABHA से नवीनतम सिंक करें", missingReport: "कोई रिपोर्ट गायब है?", contactAsha: "नए दस्तावेज़ अपलोड करने के लिए अपनी आशा कार्यकर्ता से संपर्क करें।", reqUpload: "अपलोड का अनुरोध करें",
+                videoCall: "वीडियो कॉल", date: "दिनांक", time: "समय", status: "स्थिति", joinCall: "वीडियो परामर्श में शामिल हों",
+                settings: "सेटिंग्स", abhaAcct: "ABHA खाता", linkedSuccess: "सफलतापूर्वक लिंक किया गया", notLinked: "लिंक नहीं है", linkNow: "अभी लिंक करें",
+                lang: "भाषा", notif: "सूचनाएं", logout: "पोर्टल से लॉगआउट करें", madeWith: "ग्रामीण स्वास्थ्य के लिए ♥ के साथ निर्मित",
+                linkAbhaTitle: "ABHA आईडी लिंक करें", enter14: "अपने चिकित्सा इतिहास को सुरक्षित रूप से प्राप्त करने के लिए अपना 14 अंकों का आयुष्मान भारत स्वास्थ्य खाता नंबर दर्ज करें।", abhaNum: "ABHA नंबर", getOtp: "ओटीपी प्राप्त करें",
+                enterOtp: "ओटीपी दर्ज करें", sent6: "हमने ABHA के साथ पंजीकृत आपके मोबाइल नंबर पर 6-अंकीय कोड भेजा है।", verifyLink: "सत्यापित करें और लिंक करें",
+                abhaLinked: "ABHA लिंक हो गया!", securelySynced: "आपके स्वास्थ्य रिकॉर्ड अब UMEED के साथ सुरक्षित रूप से सिंक हो गए हैं।",
+                highBpDetected: "मीना देवी: उच्च रक्तचाप का पता चला", vaxDue: "टीकाकरण देय: अमित (15 नव.)"
+            }
+        };
+
+        // --- App State ---
+        let state = {
+            view: 'landing', // landing, dashboard, family, member-details, reports, appointments, profile, abha
+            language: 'en',
+            phone: '',
+            otpSent: false,
+            isLoading: false,
+            abhaLinked: false,
+            abhaStep: 0, // 0: enter id, 1: enter otp, 2: success
+            selectedMember: null
+        };
+
+        // --- Core Functions ---
+        const appContainer = document.getElementById('app');
+        const bottomNav = document.getElementById('bottom-nav');
+
+        function render() {
+            let html = '';
+            window.scrollTo(0,0);
+            
+            switch(state.view) {
+                case 'landing': html = renderLanding(); break;
+                case 'dashboard': html = renderDashboard(); break;
+                case 'family': html = renderFamily(); break;
+                case 'member-details': html = renderMemberDetails(); break;
+                case 'reports': html = renderReports(); break;
+                case 'appointments': html = renderAppointments(); break;
+                case 'profile': html = renderProfile(); break;
+                case 'abha': html = renderAbhaFlow(); break;
+            }
+
+            appContainer.innerHTML = html;
+            updateNavigation();
+        }
+
+        function navigate(viewName) {
+            state.view = viewName;
+            render();
+        }
+
+        function updateNavigation() {
+            const t = i18n[state.language];
+            bottomNav.innerHTML = `
+                <button onclick="navigate('dashboard')" id="nav-dashboard" class="flex flex-col items-center gap-1 transition-colors nav-inactive">
+                    <i class="ph ph-house text-2xl"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wide">${t.navHome}</span>
+                </button>
+                <button onclick="navigate('family')" id="nav-family" class="flex flex-col items-center gap-1 transition-colors nav-inactive">
+                    <i class="ph ph-users text-2xl"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wide">${t.navFamily}</span>
+                </button>
+                <button onclick="navigate('reports')" id="nav-reports" class="flex flex-col items-center gap-1 transition-colors nav-inactive">
+                    <i class="ph ph-file-text text-2xl"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wide">${t.navDocs}</span>
+                </button>
+                <button onclick="navigate('appointments')" id="nav-appointments" class="flex flex-col items-center gap-1 transition-colors nav-inactive">
+                    <i class="ph ph-calendar-blank text-2xl"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wide">${t.navVisits}</span>
+                </button>
+                <button onclick="navigate('profile')" id="nav-profile" class="flex flex-col items-center gap-1 transition-colors nav-inactive">
+                    <i class="ph ph-user text-2xl"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wide">${t.navMe}</span>
+                </button>
+            `;
+
+            const hideNavViews = ['landing', 'abha'];
+            if (hideNavViews.includes(state.view)) {
+                bottomNav.classList.add('hidden');
+                bottomNav.classList.remove('flex');
+            } else {
+                bottomNav.classList.remove('hidden');
+                bottomNav.classList.add('flex');
+                
+                // Update active states
+                document.querySelectorAll('#bottom-nav button').forEach(btn => {
+                    btn.classList.remove('nav-active');
+                    btn.classList.add('nav-inactive');
+                });
+                
+                let activeId = `nav-${state.view}`;
+                if (state.view === 'member-details') activeId = 'nav-family';
+                
+                const activeBtn = document.getElementById(activeId);
+                if (activeBtn) {
+                    activeBtn.classList.remove('nav-inactive');
+                    activeBtn.classList.add('nav-active');
+                }
+            }
+        }
+
+        // --- Components ---
+        function getRiskBadge(level) {
+            const t = i18n[state.language];
+            const riskText = {
+                'Low': t.riskLow,
+                'Normal': t.riskNormal,
+                'Medium': t.riskMedium,
+                'High': t.riskHigh
+            }[level] || t.riskNormal;
+
+            const styles = {
+                'Low': 'bg-green-100 text-green-700',
+                'Normal': 'bg-green-100 text-green-700',
+                'Medium': 'bg-orange-100 text-orange-700',
+                'High': 'bg-red-100 text-red-700'
+            };
+            const style = styles[level] || styles['Normal'];
+            return `<span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase ${style}">${riskText}</span>`;
+        }
+
+        // --- Views ---
+        function renderLanding() {
+            const t = i18n[state.language];
+
+            return `
+                <div class="min-h-screen bg-gradient-to-b from-[#EBF2FF] to-[#F5F7FA] flex flex-col items-center justify-center p-6 text-center fade-in">
+                    <!-- Language Switcher -->
+                    <div class="absolute top-8 flex gap-2 bg-white/50 backdrop-blur-md p-1 rounded-full border border-white/50 shadow-sm">
+                        <button onclick="setLang('en')" class="px-4 py-1.5 rounded-full text-xs font-bold transition-all ${state.language === 'en' ? 'bg-[#2D6CDF] text-white shadow-sm' : 'text-gray-500 hover:bg-white/50'}">English</button>
+                        <button onclick="setLang('hi')" class="px-4 py-1.5 rounded-full text-xs font-bold transition-all ${state.language === 'hi' ? 'bg-[#2D6CDF] text-white shadow-sm' : 'text-gray-500 hover:bg-white/50'}">हिंदी</button>
+                    </div>
+
+                    <div class="mb-10 slide-up">
+                        <div class="w-28 h-28 bg-[#2D6CDF] rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-blue-200 mx-auto mb-6 pulse-slow">
+                            <i class="ph-fill ph-shield-check text-[56px] text-white"></i>
+                        </div>
+                        <h1 class="text-4xl font-black text-[#2D6CDF] tracking-tight">UMEED</h1>
+                        <div class="flex items-center justify-center gap-2 mt-1">
+                            <div class="h-px w-8 bg-blue-200"></div>
+                            <p class="text-gray-500 font-bold text-sm uppercase tracking-widest">${t.portal}</p>
+                            <div class="h-px w-8 bg-blue-200"></div>
+                        </div>
+                    </div>
+
+                    <div class="w-full max-w-sm bg-white p-8 rounded-[2.5rem] shadow-2xl shadow-blue-100 border border-white slide-up" style="animation-delay: 0.1s">
+                        <div class="mb-8">
+                            <h2 class="text-2xl font-black text-gray-800">${t.greet}</h2>
+                            <p class="text-gray-500 mt-1">${t.desc}</p>
+                        </div>
+                        
+                        <div class="space-y-5 mb-8">
+                            <div class="text-left">
+                                <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">${t.mobile}</label>
+                                <div class="relative">
+                                    <span class="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-gray-400 text-lg">+91</span>
+                                    <input type="tel" id="login-phone" placeholder="00000 00000" value="${state.phone}" oninput="handlePhoneInput(this)" class="w-full pl-14 pr-4 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#2D6CDF] focus:bg-white text-xl font-bold outline-none transition-all shadow-inner" ${state.otpSent ? 'disabled' : ''}>
+                                </div>
+                            </div>
+
+                            ${state.otpSent ? `
+                            <div class="text-left fade-in">
+                                <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">${t.otp}</label>
+                                <input type="number" placeholder="• • • •" class="w-full p-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#2D6CDF] focus:bg-white text-3xl tracking-[0.5em] text-center font-bold outline-none transition-all shadow-inner" maxlength="4">
+                                <button class="mt-2 text-xs text-[#2D6CDF] font-bold ml-1 hover:underline">${t.resend}</button>
+                            </div>
+                            ` : ''}
+                        </div>
+
+                        <button id="login-btn" onclick="handleLoginFlow()" class="w-full py-4 rounded-2xl font-black text-lg shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 ${state.phone.length === 10 || state.otpSent ? 'bg-[#2D6CDF] text-white shadow-blue-200 hover:bg-blue-700' : 'bg-gray-200 text-gray-400 shadow-none pointer-events-none'}">
+                            ${state.isLoading ? `<i class="ph ph-spinner-gap animate-spin text-2xl"></i>` : (state.otpSent ? t.btnLogin : t.btnSend)}
+                        </button>
+
+                        <div class="mt-8 pt-6 border-t border-gray-50 flex items-center justify-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-[#2D6CDF]">
+                                <i class="ph-fill ph-users text-xl"></i>
+                            </div>
+                            <div class="text-left">
+                                <p class="text-[10px] font-black text-gray-400 uppercase leading-none">${t.conn}</p>
+                                <p class="text-xs font-bold text-gray-600">ASHA: ${MOCK_USER.ashaWorker}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDashboard() {
+            const t = i18n[state.language];
+            return `
+                <div class="p-4 space-y-6 slide-up">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-[#2D6CDF] font-bold text-xl border-2 border-white shadow-sm">RK</div>
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-800 leading-tight">${MOCK_USER.name}</h2>
+                                <p class="text-xs text-gray-500">${t.id}: ${MOCK_USER.id}</p>
+                            </div>
+                        </div>
+                        <button onclick="handleLogout()" class="p-2 text-gray-400 hover:text-red-500">
+                            <i class="ph ph-sign-out text-2xl"></i>
+                        </button>
+                    </div>
+
+                    <!-- ABHA Banner -->
+                    ${!state.abhaLinked ? `
+                    <div onclick="navigate('abha')" class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-[2rem] p-5 text-white shadow-lg cursor-pointer transform transition active:scale-95 flex items-center justify-between">
+                        <div>
+                            <p class="text-blue-200 text-xs font-bold uppercase tracking-wider mb-1">${t.govId}</p>
+                            <h3 class="font-bold text-lg leading-tight">${t.linkAbha}</h3>
+                            <p class="text-xs text-blue-100 mt-1 opacity-90">${t.syncRecords}</p>
+                        </div>
+                        <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                            <i class="ph ph-caret-right text-xl"></i>
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    <!-- Main Grid -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="navigate('family')" class="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 flex flex-col items-center text-center gap-3 transition active:scale-95">
+                            <div class="p-3 bg-blue-50 text-[#2D6CDF] rounded-2xl"><i class="ph-fill ph-users text-3xl"></i></div>
+                            <span class="font-bold text-gray-700">${t.myFamily}</span>
+                        </button>
+                        <button onclick="viewMember(1)" class="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 flex flex-col items-center text-center gap-3 transition active:scale-95">
+                            <div class="p-3 bg-green-50 text-green-600 rounded-2xl"><i class="ph-fill ph-heartbeat text-3xl"></i></div>
+                            <span class="font-bold text-gray-700">${t.healthVitals}</span>
+                        </button>
+                        <button onclick="navigate('reports')" class="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 flex flex-col items-center text-center gap-3 transition active:scale-95">
+                            <div class="p-3 bg-purple-50 text-purple-600 rounded-2xl"><i class="ph-fill ph-file-text text-3xl"></i></div>
+                            <span class="font-bold text-gray-700">${t.reports}</span>
+                        </button>
+                        <button onclick="navigate('appointments')" class="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 flex flex-col items-center text-center gap-3 transition active:scale-95">
+                            <div class="p-3 bg-orange-50 text-orange-600 rounded-2xl"><i class="ph-fill ph-calendar-blank text-3xl"></i></div>
+                            <span class="font-bold text-gray-700">${t.schedule}</span>
+                        </button>
+                    </div>
+
+                    <!-- Health Alerts -->
+                    <div class="bg-red-50 border border-red-100 rounded-[2rem] p-5">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i class="ph-fill ph-warning-circle text-red-500 text-xl"></i>
+                            <h3 class="font-bold text-red-700">${t.healthAlerts}</h3>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="bg-white/80 p-3 rounded-xl flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-700">${t.highBpDetected}</span>
+                                <i class="ph ph-caret-right text-gray-400"></i>
+                            </div>
+                            <div class="bg-white/80 p-3 rounded-xl flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-700">${t.vaxDue}</span>
+                                <i class="ph ph-caret-right text-gray-400"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ASHA Contact -->
+                    <div class="bg-[#2D6CDF] p-6 rounded-[2rem] text-white flex items-center justify-between shadow-lg">
+                        <div>
+                            <p class="text-blue-100 text-sm">${t.needHelp}</p>
+                            <h3 class="text-xl font-bold">${t.call} ${MOCK_USER.ashaWorker}</h3>
+                            <p class="text-xs text-blue-200 opacity-80 mt-1">${t.assignedAsha}</p>
+                        </div>
+                        <a href="tel:${MOCK_USER.ashaPhone}" class="p-4 bg-white/20 rounded-full backdrop-blur-sm active:scale-90 transition-transform">
+                            <i class="ph-fill ph-phone text-2xl"></i>
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderFamily() {
+            const t = i18n[state.language];
+            let membersHtml = FAMILY_MEMBERS.map(member => `
+                <div onclick="viewMember(${member.id})" class="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 flex items-center justify-between active:scale-95 transition cursor-pointer mb-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold ${member.gender === 'Male' ? 'bg-blue-400' : 'bg-pink-400'}">
+                            ${member.name.charAt(0)}
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg text-gray-800">${member.name}</h3>
+                            <p class="text-sm text-gray-500 mb-1">${member.age} ${t.yrs} • ${member.gender === 'Male' ? t.male : t.female}</p>
+                            ${getRiskBadge(member.risk)}
+                        </div>
+                    </div>
+                    <i class="ph ph-caret-right text-gray-300 text-xl"></i>
+                </div>
+            `).join('');
+
+            return `
+                <div class="p-4 slide-up">
+                    <div class="flex items-center gap-2 mb-4">
+                        <button onclick="navigate('dashboard')" class="p-2 -ml-2"><i class="ph ph-arrow-left text-2xl"></i></button>
+                        <h2 class="text-2xl font-bold text-gray-800">${t.familyMembers}</h2>
+                    </div>
+                    ${membersHtml}
+                </div>
+            `;
+        }
+
+        function renderMemberDetails() {
+            if (!state.selectedMember) return '';
+            const t = i18n[state.language];
+            const m = state.selectedMember;
+            return `
+                <div class="slide-up">
+                    <div class="bg-white p-6 border-b border-gray-100">
+                        <div class="flex items-center gap-2 mb-4">
+                            <button onclick="navigate('family')" class="p-2 -ml-2"><i class="ph ph-arrow-left text-2xl"></i></button>
+                            <h2 class="text-xl font-bold">${t.memberProfile}</h2>
+                        </div>
+                        <div class="flex items-center gap-5">
+                            <div class="w-20 h-20 rounded-full flex items-center justify-center text-white text-3xl font-bold ${m.gender === 'Male' ? 'bg-blue-400' : 'bg-pink-400'}">
+                                ${m.name.charAt(0)}
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-2xl font-bold text-gray-800">${m.name}</h3>
+                                <div class="flex gap-2 mt-2 items-center">
+                                    <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-xs font-bold uppercase">${m.blood}</span>
+                                    ${getRiskBadge(m.risk)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-4 space-y-6">
+                        <section>
+                            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">${t.healthSummary}</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                                    <p class="text-gray-500 text-sm mb-1">${t.bp}</p>
+                                    <p><span class="text-2xl font-bold text-gray-800">${m.bp}</span><span class="text-gray-400 text-xs ml-1">mmHg</span></p>
+                                </div>
+                                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                                    <p class="text-gray-500 text-sm mb-1">${t.sugar}</p>
+                                    <p><span class="text-2xl font-bold ${m.sugar > 140 ? 'text-red-500' : 'text-green-600'}">${m.sugar}</span><span class="text-gray-400 text-xs ml-1">mg/dL</span></p>
+                                </div>
+                                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                                    <p class="text-gray-500 text-sm mb-1">${t.weight}</p>
+                                    <p><span class="text-2xl font-bold text-gray-800">${m.weight.replace('kg','')}</span><span class="text-gray-400 text-xs ml-1">kg</span></p>
+                                </div>
+                                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                                    <p class="text-gray-500 text-sm mb-1">${t.bmi}</p>
+                                    <p><span class="text-xl font-bold text-blue-500">${t.normal}</span></p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <button class="flex items-center justify-center gap-2 bg-white p-4 rounded-2xl border border-gray-200 font-bold text-gray-700 shadow-sm active:bg-gray-50">
+                                <i class="ph ph-download-simple text-xl text-[#2D6CDF]"></i> ${t.download}
+                            </button>
+                            <button class="flex items-center justify-center gap-2 bg-white p-4 rounded-2xl border border-gray-200 font-bold text-gray-700 shadow-sm active:bg-gray-50">
+                                <i class="ph ph-share-network text-xl text-[#2D6CDF]"></i> ${t.share}
+                            </button>
+                        </div>
+
+                        <section>
+                            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">${t.recentVisits}</h4>
+                            <div class="bg-white rounded-3xl border border-gray-100 divide-y divide-gray-50">
+                                <div class="p-4 flex justify-between items-center">
+                                    <div><p class="font-bold text-gray-800">ANC Checkup</p><p class="text-xs text-gray-400">12 Sep 2023 • ASHA Sunita</p></div>
+                                    <i class="ph ph-caret-right text-gray-300"></i>
+                                </div>
+                                <div class="p-4 flex justify-between items-center">
+                                    <div><p class="font-bold text-gray-800">Medicine Follow-up</p><p class="text-xs text-gray-400">01 Aug 2023 • Dr. Sharma</p></div>
+                                    <i class="ph ph-caret-right text-gray-300"></i>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderReports() {
+            const t = i18n[state.language];
+            let reportsHtml = REPORTS.map((r, i) => `
+                <div class="p-5 flex items-center justify-between ${i !== REPORTS.length - 1 ? 'border-b border-gray-50' : ''}">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-red-50 text-red-500 rounded-2xl"><i class="ph-fill ph-file-pdf text-2xl"></i></div>
+                        <div>
+                            <h3 class="font-bold text-gray-800">${state.language === 'en' ? r.title : (r.id === 101 ? 'रक्त परीक्षण रिपोर्ट' : 'मधुमेह स्क्रीनिंग')}</h3>
+                            <p class="text-sm text-gray-500">${r.member} • ${r.date}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="p-2 text-[#2D6CDF]"><i class="ph ph-download-simple text-xl"></i></button>
+                    </div>
+                </div>
+            `).join('');
+
+            return `
+                <div class="p-4 slide-up">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <button onclick="navigate('dashboard')" class="p-2 -ml-2"><i class="ph ph-arrow-left text-2xl"></i></button>
+                            <h2 class="text-2xl font-bold text-gray-800">${t.myReports}</h2>
+                        </div>
+                    </div>
+
+                    ${state.abhaLinked ? `
+                    <button class="w-full mb-4 py-3 bg-green-50 border border-green-200 text-green-700 rounded-xl font-bold flex items-center justify-center gap-2 active:bg-green-100 transition">
+                        <i class="ph ph-arrows-clockwise text-xl"></i> ${t.syncAbha}
+                    </button>
+                    ` : ''}
+                    
+                    <div class="bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm mb-6">
+                        ${reportsHtml}
+                    </div>
+
+                    <div class="bg-blue-50 p-6 rounded-[2rem] text-center border border-dashed border-blue-200">
+                        <p class="text-[#2D6CDF] font-medium mb-2">${t.missingReport}</p>
+                        <p class="text-xs text-blue-400 mb-4">${t.contactAsha}</p>
+                        <button class="px-6 py-2 bg-[#2D6CDF] text-white rounded-full font-bold text-sm shadow-md">${t.reqUpload}</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAppointments() {
+            const t = i18n[state.language];
+            let apptsHtml = APPOINTMENTS.map(appt => `
+                <div class="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 relative overflow-hidden mb-4">
+                    ${appt.type === 'eSanjeevni Call' ? `<div class="absolute top-0 right-0 bg-blue-100 text-[#2D6CDF] text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase">${t.videoCall}</div>` : ''}
+                    <div class="flex items-start gap-4 mb-4">
+                        <div class="p-3 rounded-2xl ${appt.type === 'eSanjeevni Call' ? 'bg-blue-50 text-[#2D6CDF]' : 'bg-orange-50 text-orange-600'}">
+                            <i class="ph-fill ${appt.type === 'eSanjeevni Call' ? 'ph-stethoscope' : 'ph-calendar-blank'} text-3xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg text-gray-800">${state.language === 'en' ? appt.type : (appt.type === 'Routine Checkup' ? 'नियमित जांच' : 'ई-संजीवनी कॉल')}</h3>
+                            <p class="text-sm text-gray-500">${appt.doctor} • ${state.language === 'en' ? (appt.special || 'General Checkup') : (appt.special ? 'सामान्य चिकित्सक' : 'सामान्य जांच')}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-6 bg-gray-50 p-3 rounded-xl mb-4">
+                        <div><p class="text-[10px] uppercase font-bold text-gray-400">${t.date}</p><p class="font-bold text-sm text-gray-700">${appt.date}</p></div>
+                        <div class="w-px h-8 bg-gray-200"></div>
+                        <div><p class="text-[10px] uppercase font-bold text-gray-400">${t.time}</p><p class="font-bold text-sm text-gray-700">${appt.time}</p></div>
+                        <div class="w-px h-8 bg-gray-200"></div>
+                        <div><p class="text-[10px] uppercase font-bold text-gray-400">${t.status}</p><p class="font-bold text-sm ${appt.status === 'Confirmed' ? 'text-green-600' : 'text-orange-500'}">${appt.status === 'Confirmed' ? (state.language === 'en' ? 'Confirmed' : 'पुष्टि की गई') : (state.language === 'en' ? 'Pending' : 'लंबित')}</p></div>
+                    </div>
+                    ${appt.type === 'eSanjeevni Call' ? `<button class="w-full py-3 bg-[#2D6CDF] text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-md active:bg-blue-700 transition"><i class="ph-fill ph-video-camera text-xl"></i> ${t.joinCall}</button>` : ''}
+                </div>
+            `).join('');
+
+            return `
+                <div class="p-4 slide-up">
+                    <div class="flex items-center gap-2 mb-4">
+                        <button onclick="navigate('dashboard')" class="p-2 -ml-2"><i class="ph ph-arrow-left text-2xl"></i></button>
+                        <h2 class="text-2xl font-bold text-gray-800">${t.schedule}</h2>
+                    </div>
+                    ${apptsHtml}
+                </div>
+            `;
+        }
+
+        function renderProfile() {
+            const t = i18n[state.language];
+            return `
+                <div class="p-4 slide-up">
+                    <div class="flex items-center gap-2 mb-4">
+                        <button onclick="navigate('dashboard')" class="p-2 -ml-2"><i class="ph ph-arrow-left text-2xl"></i></button>
+                        <h2 class="text-2xl font-bold text-gray-800">${t.settings}</h2>
+                    </div>
+
+                    <div class="bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm mb-6">
+                        <div class="p-5 flex items-center gap-4 bg-blue-50/50">
+                            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center border-2 border-white shadow-sm font-bold text-[#2D6CDF] text-xl">RK</div>
+                            <div>
+                                <h3 class="font-bold text-lg">${MOCK_USER.name}</h3>
+                                <p class="text-sm text-gray-500">${MOCK_USER.phone}</p>
+                            </div>
+                        </div>
+
+                        <div class="divide-y divide-gray-50">
+                            <button class="w-full p-5 flex items-center justify-between active:bg-gray-50 text-left">
+                                <div class="flex items-center gap-4 text-gray-700">
+                                    <i class="ph ph-identification-card text-2xl text-[#2D6CDF]"></i>
+                                    <div>
+                                        <span class="font-bold block">${t.abhaAcct}</span>
+                                        ${state.abhaLinked ? `<span class="text-xs text-green-600 font-bold flex items-center gap-1"><i class="ph-fill ph-check-circle"></i> ${t.linkedSuccess}</span>` : `<span class="text-xs text-orange-500 font-bold">${t.notLinked}</span>`}
+                                    </div>
+                                </div>
+                                ${!state.abhaLinked ? `<span onclick="navigate('abha'); event.stopPropagation();" class="text-xs bg-blue-100 text-[#2D6CDF] font-bold px-3 py-1 rounded-full">${t.linkNow}</span>` : `<i class="ph ph-caret-right text-gray-300"></i>`}
+                            </button>
+
+                            <button onclick="setLang(state.language === 'en' ? 'hi' : 'en')" class="w-full p-5 flex items-center justify-between active:bg-gray-50 text-left">
+                                <div class="flex items-center gap-4 text-gray-700">
+                                    <i class="ph ph-translate text-2xl text-[#2D6CDF]"></i>
+                                    <span class="font-bold">${t.lang}</span>
+                                </div>
+                                <span class="text-sm text-gray-400 flex items-center gap-1 bg-gray-100 px-3 py-1 rounded-full font-bold">${state.language === 'en' ? 'Switch to हिंदी' : 'Switch to English'} <i class="ph ph-arrows-left-right"></i></span>
+                            </button>
+
+                            <button class="w-full p-5 flex items-center justify-between active:bg-gray-50 text-left">
+                                <div class="flex items-center gap-4 text-gray-700">
+                                    <i class="ph ph-bell text-2xl text-[#2D6CDF]"></i>
+                                    <span class="font-bold">${t.notif}</span>
+                                </div>
+                                <div class="w-10 h-5 bg-green-500 rounded-full relative"><div class="w-4 h-4 bg-white rounded-full absolute right-0.5 top-0.5"></div></div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button onclick="handleLogout()" class="w-full p-5 bg-red-50 text-red-600 rounded-[2rem] font-bold border border-red-100 flex items-center justify-center gap-2 active:bg-red-100 transition">
+                        <i class="ph ph-sign-out text-xl"></i> ${t.logout}
+                    </button>
+
+                    <div class="text-center mt-6">
+                        <p class="text-xs text-gray-400">UMEED Health v1.0.5</p>
+                        <p class="text-xs text-gray-400 mt-1">${t.madeWith}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAbhaFlow() {
+            const t = i18n[state.language];
+            let content = '';
+
+            if (state.abhaStep === 0) {
+                content = `
+                    <div class="mb-8 text-center fade-in">
+                        <div class="w-20 h-20 bg-blue-100 text-[#2D6CDF] rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="ph-fill ph-identification-card text-4xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-black text-gray-800">${t.linkAbhaTitle}</h2>
+                        <p class="text-gray-500 mt-2 text-sm px-4">${t.enter14}</p>
+                    </div>
+                    <div class="space-y-4 mb-8 fade-in text-left">
+                        <label class="block text-xs font-black text-gray-400 uppercase tracking-widest ml-1">${t.abhaNum}</label>
+                        <input type="text" placeholder="12-3456-7890-1234" class="w-full p-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#2D6CDF] focus:bg-white text-lg font-bold outline-none transition-all shadow-inner text-center tracking-widest">
+                    </div>
+                    <button onclick="handleAbhaSubmit()" class="w-full py-4 bg-[#2D6CDF] text-white rounded-2xl font-black text-lg shadow-lg shadow-blue-200 flex items-center justify-center gap-2 transition-all active:scale-95">
+                        ${state.isLoading ? `<i class="ph ph-spinner-gap animate-spin text-2xl"></i>` : t.getOtp}
+                    </button>
+                `;
+            } else if (state.abhaStep === 1) {
+                content = `
+                    <div class="mb-8 text-center fade-in">
+                        <h2 class="text-2xl font-black text-gray-800">${t.enterOtp}</h2>
+                        <p class="text-gray-500 mt-2 text-sm px-4">${t.sent6}</p>
+                    </div>
+                    <div class="space-y-4 mb-8 fade-in text-left">
+                        <input type="number" placeholder="• • • • • •" class="w-full p-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#2D6CDF] focus:bg-white text-3xl tracking-[0.5em] text-center font-bold outline-none transition-all shadow-inner" maxlength="6">
+                    </div>
+                    <button onclick="handleAbhaSubmit()" class="w-full py-4 bg-[#2D6CDF] text-white rounded-2xl font-black text-lg shadow-lg shadow-blue-200 flex items-center justify-center gap-2 transition-all active:scale-95">
+                        ${state.isLoading ? `<i class="ph ph-spinner-gap animate-spin text-2xl"></i>` : t.verifyLink}
+                    </button>
+                `;
+            } else if (state.abhaStep === 2) {
+                content = `
+                    <div class="text-center py-10 fade-in">
+                        <div class="w-24 h-24 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6 pulse-slow">
+                            <i class="ph-fill ph-check-circle text-[64px]"></i>
+                        </div>
+                        <h2 class="text-2xl font-black text-gray-800 mb-2">${t.abhaLinked}</h2>
+                        <p class="text-gray-500 text-sm">${t.securelySynced}</p>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="min-h-screen bg-white flex flex-col p-6 slide-up relative">
+                    ${state.abhaStep < 2 ? `<button onclick="navigate('dashboard')" class="absolute top-6 left-4 p-2 text-gray-400 hover:text-gray-800"><i class="ph ph-x text-2xl"></i></button>` : ''}
+                    <div class="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
+                        ${content}
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- Action Handlers ---
+        window.handlePhoneInput = function(el) {
+            state.phone = el.value.replace(/\D/g, '').slice(0, 10);
+            el.value = state.phone;
+            
+            const btn = document.getElementById('login-btn');
+            if(btn) {
+                if (state.phone.length === 10) {
+                    btn.classList.remove('bg-gray-200', 'text-gray-400', 'pointer-events-none', 'shadow-none');
+                    btn.classList.add('bg-[#2D6CDF]', 'text-white', 'shadow-blue-200');
+                } else {
+                    btn.classList.add('bg-gray-200', 'text-gray-400', 'pointer-events-none', 'shadow-none');
+                    btn.classList.remove('bg-[#2D6CDF]', 'text-white', 'shadow-blue-200');
+                }
+            }
+        };
+
+        window.handleLoginFlow = function() {
+            state.isLoading = true;
+            render();
+            
+            setTimeout(() => {
+                state.isLoading = false;
+                if (!state.otpSent) {
+                    state.otpSent = true;
+                } else {
+                    state.view = 'dashboard';
+                }
+                render();
+            }, 800);
+        };
+
+        window.handleLogout = function() {
+            state.view = 'landing';
+            state.otpSent = false;
+            state.phone = '';
+            render();
+        };
+
+        window.setLang = function(lang) {
+            state.language = lang;
+            render();
+        };
+
+        window.viewMember = function(id) {
+            state.selectedMember = FAMILY_MEMBERS.find(m => m.id === id);
+            navigate('member-details');
+        };
+
+        window.handleAbhaSubmit = function() {
+            state.isLoading = true;
+            render();
+            setTimeout(() => {
+                state.isLoading = false;
+                if (state.abhaStep === 0) {
+                    state.abhaStep = 1;
+                } else if (state.abhaStep === 1) {
+                    state.abhaStep = 2;
+                    state.abhaLinked = true;
+                    setTimeout(() => {
+                        state.view = 'dashboard';
+                        state.abhaStep = 0; // reset for safety
+                        render();
+                    }, 2000);
+                }
+                render();
+            }, 1000);
+        };
+
+        // --- Init ---
+        render();
+
+    </script>
+</body>
+</html>
